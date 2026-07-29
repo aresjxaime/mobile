@@ -1,0 +1,122 @@
+import http from 'http';
+import url from 'url';
+import { ConversationService } from './services/conversationService.ts';
+import { DeviceService } from './services/deviceService.ts';
+
+const convService = new ConversationService();
+
+function jsonResponse(res, status, obj){ res.writeHead(status, {'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); }
+
+function parseBody(req){ return new Promise<any>((resolve,reject)=>{ let b=''; req.on('data',c=> b += c); req.on('end', ()=> { try{ resolve(b ? JSON.parse(b) : {}) } catch(e){ reject(e) } }); req.on('error', reject); }); }
+
+const server = http.createServer(async (req,res)=>{
+  const parsed = url.parse(req.url || '', true);
+  try{
+    if (req.method === 'POST' && parsed.pathname === '/v1/pair/start'){
+      const body = await parseBody(req);
+      const deviceName = body?.device_name;
+      const pair = await DeviceService.startPairing(deviceName);
+      return jsonResponse(res, 200, pair);
+    }
+
+    if (req.method === 'POST' && parsed.pathname === '/v1/pair/confirm'){
+      const body = await parseBody(req);
+      const code = body?.code;
+      if (!code) return jsonResponse(res, 400, {error: 'code required'});
+      const dev = await DeviceService.confirmPairing(code);
+      return jsonResponse(res, 201, {device_token: dev.token, device_id: dev.id});
+    }
+
+    if (req.method === 'POST' && parsed.pathname === '/v1/conversations'){
+      const body = await parseBody(req);
+      const userId = body?.user_id;
+      const title = body?.title;
+      const convo = await convService.createConversation(userId, title);
+      return jsonResponse(res, 201, convo);
+    }
+
+    if (req.method === 'POST' && parsed.pathname && parsed.pathname.startsWith('/v1/conversations/') && parsed.pathname.endsWith('/messages')){
+      const parts = parsed.pathname.split('/');
+      const convoId = parts[3];
+      const auth = (req.headers['authorization'] || '').toString();
+      const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+      if (!token) return jsonResponse(res, 401, {error: 'missing token'});
+      const dev = await DeviceService.validateToken(token);
+      if (!dev) return jsonResponse(res, 403, {error: 'invalid token'});
+      const body = await parseBody(req);
+      const role = body?.role || 'user';
+      const content = body?.content;
+      if (!content) return jsonResponse(res, 400, {error: 'content required'});
+      const msg = await convService.appendMessage(convoId, role, content, body?.timestamp);
+      return jsonResponse(res, 201, msg);
+    }
+
+    if (req.method === 'GET' && parsed.pathname && parsed.pathname.startsWith('/v1/conversations/') && parsed.pathname.endsWith('/messages')){
+      const parts = parsed.pathname.split('/');
+      const convoId = parts[3];
+      const after = (parsed.query || {}).after as string | undefined;
+      const list = await convService.listMessages(convoId, after);
+      return jsonResponse(res, 200, list);
+    }
+
+    // fallback
+    jsonResponse(res, 404, {error: 'not found'});
+  }catch(e:any){ jsonResponse(res, 500, {error: e.message || 'server error'}); }
+});
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+server.listen(PORT, ()=> console.log(`Aries local server listening on http://localhost:${PORT}`));
+
+// WebSocket realtime endpoint
+import WebSocket, { WebSocketServer } from 'ws';
+import { Events } from './events.ts';
+
+const subscriptions: Map<string, Set<WebSocket>> = new Map();
+
+const wss = new WebSocketServer({ server, path: '/v1/realtime' });
+
+wss.on('connection', async (ws, req) => {
+  try {
+    const parsed = url.parse(req.url || '', true);
+    const token = (parsed.query && (parsed.query as any).token) || null;
+    if (!token) { ws.close(4001, 'missing token'); return; }
+    const dev = await DeviceService.validateToken(token.toString());
+    if (!dev) { ws.close(4003, 'invalid token'); return; }
+
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg && msg.type === 'subscribe' && msg.conversationId) {
+          const convId = msg.conversationId as string;
+          let set = subscriptions.get(convId);
+          if (!set) { set = new Set(); subscriptions.set(convId, set); }
+          set.add(ws);
+          // send ack
+          ws.send(JSON.stringify({ type: 'subscribed', conversationId: convId }));
+        }
+      } catch (e) { /* ignore malformed */ }
+    });
+
+    ws.on('close', () => {
+      // remove from all subscriptions
+      for (const [convId, set] of subscriptions.entries()) {
+        if (set.has(ws)) { set.delete(ws); if (set.size === 0) subscriptions.delete(convId); }
+      }
+    });
+
+  } catch (e) {
+    try { ws.close(1011, 'server error'); } catch(_) {}
+  }
+});
+
+Events.on('message', (msg: any) => {
+  const convId = msg.conversationId as string;
+  const set = subscriptions.get(convId);
+  if (!set || set.size === 0) return;
+  const payload = JSON.stringify({ type: 'message', message: msg });
+  for (const ws of Array.from(set)) {
+    try { if (ws.readyState === WebSocket.OPEN) ws.send(payload); }
+    catch (e) { /* ignore send errors */ }
+  }
+});
+

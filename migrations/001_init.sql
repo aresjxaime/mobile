@@ -1,0 +1,4 @@
+-- Migration placeholder for future SQL-backed storage
+-- Create conversations and messages tables when migrating to SQL
+-- conversations (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, created_at TEXT, updated_at TEXT)
+-- messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT, content TEXT, timestamp TEXT, created_at TEXT)
