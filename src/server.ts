@@ -35,6 +35,26 @@ const server = http.createServer(async (req,res)=>{
       return jsonResponse(res, 201, convo);
     }
 
+    // ARES chat: send a message to the ARES orchestrator and get a routing reply
+    if (req.method === 'POST' && parsed.pathname === '/v1/ares/chat'){
+      const body = await parseBody(req);
+      const userId = body?.user_id || 'local-user';
+      const text = body?.message;
+      if (!text) return jsonResponse(res, 400, { error: 'message required' });
+      const { AresService } = await import('./services/aresService.ts');
+      const convo = await AresService.ensureAresConversation(userId);
+      const reply = await AresService.handleMessage(convo.id, text);
+      return jsonResponse(res, 200, { conversationId: convo.id, reply });
+    }
+
+    // list ARES conversations for a user
+    if (req.method === 'GET' && parsed.pathname === '/v1/ares/conversations'){
+      const userId = (parsed.query || {}).user_id as string | undefined || 'local-user';
+      const { AresService } = await import('./services/aresService.ts');
+      const convo = await AresService.ensureAresConversation(userId);
+      return jsonResponse(res, 200, { conversationId: convo.id });
+    }
+
     if (req.method === 'POST' && parsed.pathname && parsed.pathname.startsWith('/v1/conversations/') && parsed.pathname.endsWith('/messages')){
       const parts = parsed.pathname.split('/');
       const convoId = parts[3];
