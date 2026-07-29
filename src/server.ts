@@ -85,6 +85,32 @@ const server = http.createServer(async (req,res)=>{
 });
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+
+// If USE_SQL is enabled, attempt a one-time migration from file storage into SQL if SQL has no data
+if (process.env.USE_SQL === '1' || process.env.USE_SQL === 'true') {
+  try {
+    const fileModule = await import('./data/storage.ts');
+    const sqlModule = await import('./data/sqlStorage.ts');
+    const fileStorage = fileModule.Storage;
+    const sqlStorage = sqlModule.default;
+    const fileConvs = fileStorage.listConversations();
+    const sqlConvs = sqlStorage.listConversations();
+    if (Object.keys(sqlConvs).length === 0 && Object.keys(fileConvs).length > 0) {
+      console.log('Migrating file storage -> SQL (one-time)');
+      const msgs = fileStorage.listMessages();
+      // convert convs map to array of objects expected by sql save (sql save expects objects with keys matching fields)
+      const convArray = Object.values(fileConvs).map((c:any) => ({ id: c.id, userId: c.userId, title: c.title, createdAt: c.createdAt, updatedAt: c.updatedAt }));
+      sqlStorage.saveConversations(convArray);
+      sqlStorage.saveMessages(msgs);
+      const devs = fileStorage.listDevices();
+      sqlStorage.saveDevices(devs);
+      console.log('Migration complete');
+    }
+  } catch (e) {
+    console.warn('Migration check failed:', e.message || e);
+  }
+}
+
 server.listen(PORT, ()=> console.log(`Aries local server listening on http://localhost:${PORT}`));
 
 // WebSocket realtime endpoint

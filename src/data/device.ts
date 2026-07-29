@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Storage } from './storage.ts';
+import { Storage } from './storage_adapter.ts';
 
 export interface Device {
   id: string;
