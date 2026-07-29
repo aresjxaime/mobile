@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ARES Voice Console</title>
+  <style>
+    body { font-family: system-ui, Arial; padding: 16px; max-width: 720px; margin:auto }
+    button { margin: 4px; }
+    #log { white-space: pre-wrap; background:#f7f7f7; padding:10px; border-radius:6px; min-height:120px }
+    #controls { margin-bottom: 8px }
+  </style>
+</head>
+<body>
+  <h2>ARES Voice Console</h2>
+  <div id="controls">
+    Server URL: <input id="server" value="http://localhost:3000" size="30"> 
+    <button id="startRec">Start mic</button>
+    <button id="stopRec" disabled>Stop mic</button>
+    <button id="speakTest">Speak test</button>
+  </div>
+
+  <div>
+    <textarea id="input" rows="3" style="width:100%" placeholder="Type or speak a message"></textarea>
+    <div>
+      <button id="send">Send to ARES</button>
+    </div>
+  </div>
+
+  <h4>Log</h4>
+  <div id="log"></div>
+
+<script>
+const serverEl = document.getElementById('server');
+const inputEl = document.getElementById('input');
+const logEl = document.getElementById('log');
+const startBtn = document.getElementById('startRec');
+const stopBtn = document.getElementById('stopRec');
+const sendBtn = document.getElementById('send');
+const speakTest = document.getElementById('speakTest');
+
+function log(...args){ logEl.textContent += args.map(a=> typeof a === 'string' ? a : JSON.stringify(a)).join(' ') + '\n'; logEl.scrollTop = logEl.scrollHeight }
+
+async function sendMessage(text){
+  const url = serverEl.value.replace(/\/$/, '');
+  try{
+    log('->', text);
+    const res = await fetch(url + '/v1/ares/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user_id: 'local-user', message: text }) });
+    const body = await res.json();
+    log('<-', body);
+    // extract reply text
+    let replyText = '';
+    if (body.reply) {
+      if (typeof body.reply === 'string') replyText = body.reply;
+      else if (body.reply.content) replyText = body.reply.content;
+      else if (body.reply.message && body.reply.message.content) replyText = body.reply.message.content;
+      else replyText = JSON.stringify(body.reply);
+    }
+    if (replyText) speak(replyText);
+  } catch(e){ log('error', e.message || e); }
+}
+
+function speak(text){
+  if (!('speechSynthesis' in window)) { log('TTS not supported in this browser'); return }
+  const u = new SpeechSynthesisUtterance(text);
+  window.speechSynthesis.cancel();
+  u.lang = 'en-US';
+  window.speechSynthesis.speak(u);
+  log('TTS:', text);
+}
+
+// Speech recognition (Web Speech API)
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.continuous = true;
+  recognition.onresult = (ev) => {
+    const t = ev.results[ev.results.length-1][0].transcript;
+    inputEl.value = t;
+    log('Heard:', t);
+  };
+  recognition.onerror = (ev)=> log('recog error', ev.error);
+} else {
+  log('SpeechRecognition not supported in this browser');
+}
+
+startBtn.addEventListener('click', ()=>{
+  if (!recognition) return log('SpeechRecognition unavailable');
+  recognition.start(); startBtn.disabled = true; stopBtn.disabled = false; log('Microphone started');
+});
+stopBtn.addEventListener('click', ()=>{ if (!recognition) return; recognition.stop(); startBtn.disabled = false; stopBtn.disabled = true; log('Microphone stopped'); });
+
+sendBtn.addEventListener('click', ()=>{ const t = inputEl.value.trim(); if (!t) return; sendMessage(t); inputEl.value=''; });
+
+speakTest.addEventListener('click', ()=> speak('Hello, I am A R E S. How can I help you?'));
+
+log('ARES Voice Console ready.');
+</script>
+</body>
+</html>
