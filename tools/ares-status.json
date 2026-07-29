@@ -15,7 +15,7 @@
     "Initial PR created"
   ],
   "inProgress": [
-    "Unit tests (Vitest)",
+    "Unit tests (Vitest) - added adapter & integration tests",
     "CI workflow",
     "Pairing security enhancements",
     "React Native example",
