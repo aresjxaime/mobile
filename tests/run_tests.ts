@@ -37,8 +37,8 @@ async function run() {
   node.stdout?.on('data', d=> process.stdout.write(`[server] ${d}`));
   node.stderr?.on('data', d=> process.stderr.write(`[server-err] ${d}`));
 
-  // wait for server to start
-  await wait(800);
+  // wait for server to start (allow more time on slower machines)
+  await wait(1500);
 
   // connect websocket
   const ws = new WebSocket(`ws://127.0.0.1:3000/v1/realtime?token=${token}`);
