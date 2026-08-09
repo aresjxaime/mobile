@@ -32,12 +32,43 @@ function open() {
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY,
       name TEXT,
-      token TEXT NOT NULL,
       paired_at TEXT NOT NULL,
       last_seen TEXT
     );
+    CREATE TABLE IF NOT EXISTS tokens (
+      id TEXT PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires_at TEXT,
+      revoked INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_messages_conv_ts ON messages(conversation_id, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_tokens_device ON tokens(device_id);
   `);
+  
+  // Schema migration: if devices table has a token column (legacy), remove it
+  try {
+    const info = db.prepare("PRAGMA table_info(devices)").all() as any[];
+    const hasTokenColumn = info.some(col => col.name === 'token');
+    if (hasTokenColumn) {
+      db.exec(`
+        ALTER TABLE devices RENAME TO devices_old;
+        CREATE TABLE devices (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          paired_at TEXT NOT NULL,
+          last_seen TEXT
+        );
+        INSERT INTO devices (id, name, paired_at, last_seen) 
+        SELECT id, name, paired_at, last_seen FROM devices_old;
+        DROP TABLE devices_old;
+      `);
+    }
+  } catch (e) {
+    // ignore migration errors
+  }
+  
   return db;
 }
 
@@ -49,6 +80,7 @@ export const SqlStorage = {
     for (const r of rows) map[r.id] = { id: r.id, userId: r.user_id, title: r.title, createdAt: r.created_at, updatedAt: r.updated_at };
     return map;
   },
+
   saveConversations(convMap: Record<string, any>) {
     const db = open();
     const insert = db.prepare('INSERT OR REPLACE INTO conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)');
@@ -82,14 +114,36 @@ export const SqlStorage = {
     const db = open();
     const rows = db.prepare('SELECT * FROM devices').all();
     const map: Record<string, any> = {};
-    for (const r of rows) map[r.id] = { id: r.id, name: r.name, token: r.token, pairedAt: r.paired_at, lastSeen: r.last_seen };
+    for (const r of rows) map[r.id] = { id: r.id, name: r.name, pairedAt: r.paired_at, lastSeen: r.last_seen };
     return map;
   },
   saveDevices(devMap: Record<string, any>) {
     const db = open();
-    const insert = db.prepare('INSERT OR REPLACE INTO devices (id, name, token, paired_at, last_seen) VALUES (?, ?, ?, ?, ?)');
-    const tx = db.transaction((items: any[]) => { for (const d of items) insert.run(d.id, d.name || null, d.token, d.pairedAt, d.lastSeen || null); });
+    const insert = db.prepare('INSERT OR REPLACE INTO devices (id, name, paired_at, last_seen) VALUES (?, ?, ?, ?)');
+    const tx = db.transaction((items: any[]) => { for (const d of items) insert.run(d.id, d.name || null, d.pairedAt, d.lastSeen || null); });
     tx(Object.values(devMap));
+  },
+  // token operations
+  listTokens(): Record<string, any[]> {
+    const db = open();
+    const rows = db.prepare('SELECT * FROM tokens ORDER BY created_at ASC').all();
+    const map: Record<string, any[]> = {};
+    for (const r of rows) {
+      if (!map[r.device_id]) map[r.device_id] = [];
+      map[r.device_id].push({ id: r.id, token: r.token, expiresAt: r.expires_at, revoked: !!r.revoked, createdAt: r.created_at });
+    }
+    return map;
+  },
+  saveTokens(tokenMap: Record<string, any[]>) {
+    const db = open();
+    const insert = db.prepare('INSERT OR REPLACE INTO tokens (id, device_id, token, expires_at, revoked, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+    const tx = db.transaction((items: any[]) => { for (const t of items) insert.run(t.id, t.deviceId || t.device_id, t.token, t.expiresAt || null, t.revoked ? 1 : 0, t.createdAt); });
+    const all: any[] = [];
+    for (const deviceId of Object.keys(tokenMap)) {
+      const list = tokenMap[deviceId] || [];
+      for (const m of list) all.push({ id: m.id || m.token, deviceId, token: m.token, expiresAt: m.expiresAt || null, revoked: m.revoked ? 1 : 0, createdAt: m.createdAt || new Date().toISOString() });
+    }
+    tx(all);
   }
 };
 

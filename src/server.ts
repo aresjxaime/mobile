@@ -79,6 +79,14 @@ const server = http.createServer(async (req,res)=>{
       return jsonResponse(res, 200, list);
     }
 
+    // dashboard endpoint
+    if (req.method === 'GET' && parsed.pathname === '/v1/dashboard'){
+      const { buildDashboard } = await import('./domain/dashboard.ts');
+      const root = process.cwd();
+      const summary = buildDashboard(root);
+      return jsonResponse(res, 200, summary);
+    }
+
     // fallback
     jsonResponse(res, 404, {error: 'not found'});
   }catch(e:any){ jsonResponse(res, 500, {error: e.message || 'server error'}); }
