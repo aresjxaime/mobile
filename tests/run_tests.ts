@@ -14,7 +14,7 @@ async function httpPost(pathname: string, token: string | null, body: any) {
   return new Promise<{status:number, body:any}>((resolve,reject)=>{
     const data = JSON.stringify(body);
     const opts: any = { hostname: '127.0.0.1', port: 3000, path: pathname, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } };
-    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     const req = http.request(opts, (res)=>{
       let b=''; res.on('data',c=> b+=c); res.on('end', ()=> { try{ resolve({status: res.statusCode||0, body: b ? JSON.parse(b) : null}); } catch(e){ reject(e);} });
     });
@@ -27,8 +27,8 @@ async function httpPost(pathname: string, token: string | null, body: any) {
 async function run() {
   console.log('Starting tests...');
   // create conversation and device (persisted to .data)
+  const dev = await DeviceRepo.createDevice('test-device', 'test-user');
   const conv = await ConversationRepo.createConversation('test-user', 'test-convo');
-  const dev = await DeviceRepo.createDevice('test-device');
   const token = dev.token;
   console.log('Conversation', conv.id, 'Device token', token);
 

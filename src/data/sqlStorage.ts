@@ -31,6 +31,7 @@ function open() {
     );
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       name TEXT,
       paired_at TEXT NOT NULL,
       last_seen TEXT
@@ -47,21 +48,24 @@ function open() {
     CREATE INDEX IF NOT EXISTS idx_tokens_device ON tokens(device_id);
   `);
   
-  // Schema migration: if devices table has a token column (legacy), remove it
+  // Schema migration: handle legacy schema updates
   try {
     const info = db.prepare("PRAGMA table_info(devices)").all() as any[];
     const hasTokenColumn = info.some(col => col.name === 'token');
-    if (hasTokenColumn) {
+    const hasuserIdColumn = info.some(col => col.name === 'user_id');
+    
+    if (hasTokenColumn || !hasuserIdColumn) {
       db.exec(`
         ALTER TABLE devices RENAME TO devices_old;
         CREATE TABLE devices (
           id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
           name TEXT,
           paired_at TEXT NOT NULL,
           last_seen TEXT
         );
-        INSERT INTO devices (id, name, paired_at, last_seen) 
-        SELECT id, name, paired_at, last_seen FROM devices_old;
+        INSERT INTO devices (id, user_id, name, paired_at, last_seen) 
+        SELECT id, 'default-user', name, paired_at, last_seen FROM devices_old;
         DROP TABLE devices_old;
       `);
     }
@@ -114,13 +118,13 @@ export const SqlStorage = {
     const db = open();
     const rows = db.prepare('SELECT * FROM devices').all();
     const map: Record<string, any> = {};
-    for (const r of rows) map[r.id] = { id: r.id, name: r.name, pairedAt: r.paired_at, lastSeen: r.last_seen };
+    for (const r of rows) map[r.id] = { id: r.id, userId: r.user_id, name: r.name, token: '', pairedAt: r.paired_at, lastSeen: r.last_seen };
     return map;
   },
   saveDevices(devMap: Record<string, any>) {
     const db = open();
-    const insert = db.prepare('INSERT OR REPLACE INTO devices (id, name, paired_at, last_seen) VALUES (?, ?, ?, ?)');
-    const tx = db.transaction((items: any[]) => { for (const d of items) insert.run(d.id, d.name || null, d.pairedAt, d.lastSeen || null); });
+    const insert = db.prepare('INSERT OR REPLACE INTO devices (id, user_id, name, paired_at, last_seen) VALUES (?, ?, ?, ?, ?)');
+    const tx = db.transaction((items: any[]) => { for (const d of items) insert.run(d.id, d.userId || 'default-user', d.name || null, d.pairedAt, d.lastSeen || null); });
     tx(Object.values(devMap));
   },
   // token operations

@@ -26,7 +26,7 @@ export async function requireConversationAccess(
   conversationId: string,
 ): Promise<Conversation> {
   const conversation = await ConversationRepo.getConversation(conversationId);
-  if (!conversation || conversation.userId !== device.id) {
+  if (!conversation || conversation.userId !== device.userId) {
     throw new HttpError(404, 'not found');
   }
   return conversation;

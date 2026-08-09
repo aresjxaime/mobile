@@ -3,6 +3,7 @@ import { Storage } from './storage_adapter.ts';
 
 export interface Device {
   id: string;
+  userId: string;  // User this device belongs to
   name: string;
   token: string;
   pairedAt: string;
@@ -14,11 +15,11 @@ function isoNow() {
 }
 
 export const DeviceRepo = {
-  createDevice: async (name: string): Promise<Device> => {
+  createDevice: async (name: string, userId: string = 'default-user'): Promise<Device> => {
     const devs = Storage.listDevices() as Record<string, Device>;
     const id = uuidv4();
     const now = isoNow();
-    const device: Device = { id, name, token: '', pairedAt: now } as any;
+    const device: Device = { id, userId, name, token: '', pairedAt: now } as any;
     devs[id] = device;
     Storage.saveDevices(devs);
     // create initial token

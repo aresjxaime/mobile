@@ -2,6 +2,7 @@ import http from 'http';
 import url from 'url';
 import { ConversationService } from './services/conversationService.ts';
 import { DeviceService } from './services/deviceService.ts';
+import { ConversationRepo } from './data/conversation.ts';
 
 const convService = new ConversationService();
 
@@ -63,6 +64,13 @@ const server = http.createServer(async (req,res)=>{
       if (!token) return jsonResponse(res, 401, {error: 'missing token'});
       const dev = await DeviceService.validateToken(token);
       if (!dev) return jsonResponse(res, 403, {error: 'invalid token'});
+      
+      // Enforce authorization: device can only post to conversations belonging to its user
+      const conv = await ConversationRepo.getConversation(convoId);
+      if (!conv || conv.userId !== dev.userId) {
+        return jsonResponse(res, 403, {error: 'forbidden'});
+      }
+      
       const body = await parseBody(req);
       const role = body?.role || 'user';
       const content = body?.content;
