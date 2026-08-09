@@ -6,9 +6,9 @@ import { ConversationRepo } from './data/conversation.ts';
 
 const convService = new ConversationService();
 
-function jsonResponse(res, status, obj){ res.writeHead(status, {'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); }
+function jsonResponse(res: http.ServerResponse, status: number, obj: any){ res.writeHead(status, {'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); }
 
-function parseBody(req){ return new Promise<any>((resolve,reject)=>{ let b=''; req.on('data',c=> b += c); req.on('end', ()=> { try{ resolve(b ? JSON.parse(b) : {}) } catch(e){ reject(e) } }); req.on('error', reject); }); }
+function parseBody(req: http.IncomingMessage){ return new Promise<any>((resolve,reject)=>{ let b=''; req.on('data',(c: any)=> b += c); req.on('end', ()=> { try{ resolve(b ? JSON.parse(b) : {}) } catch(e){ reject(e) } }); req.on('error', reject); }); }
 
 const server = http.createServer(async (req,res)=>{
   const parsed = url.parse(req.url || '', true);
@@ -123,7 +123,7 @@ if (process.env.USE_SQL === '1' || process.env.USE_SQL === 'true') {
       console.log('Migration complete');
     }
   } catch (e) {
-    console.warn('Migration check failed:', e.message || e);
+    console.warn('Migration check failed:', e instanceof Error ? e.message : String(e));
   }
 }
 

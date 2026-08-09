@@ -79,7 +79,7 @@ function open() {
 export const SqlStorage = {
   listConversations(): Record<string, any> {
     const db = open();
-    const rows = db.prepare('SELECT * FROM conversations').all();
+    const rows = db.prepare('SELECT * FROM conversations').all() as any[];
     const map: Record<string, any> = {};
     for (const r of rows) map[r.id] = { id: r.id, userId: r.user_id, title: r.title, createdAt: r.created_at, updatedAt: r.updated_at };
     return map;
@@ -93,7 +93,7 @@ export const SqlStorage = {
   },
   listMessages(): Record<string, any[]> {
     const db = open();
-    const rows = db.prepare('SELECT * FROM messages ORDER BY timestamp ASC').all();
+    const rows = db.prepare('SELECT * FROM messages ORDER BY timestamp ASC').all() as any[];
     const map: Record<string, any[]> = {};
     for (const r of rows) {
       if (!map[r.conversation_id]) map[r.conversation_id] = [];
@@ -116,7 +116,7 @@ export const SqlStorage = {
   },
   listDevices(): Record<string, any> {
     const db = open();
-    const rows = db.prepare('SELECT * FROM devices').all();
+    const rows = db.prepare('SELECT * FROM devices').all() as any[];
     const map: Record<string, any> = {};
     for (const r of rows) map[r.id] = { id: r.id, userId: r.user_id, name: r.name, token: '', pairedAt: r.paired_at, lastSeen: r.last_seen };
     return map;
@@ -130,7 +130,7 @@ export const SqlStorage = {
   // token operations
   listTokens(): Record<string, any[]> {
     const db = open();
-    const rows = db.prepare('SELECT * FROM tokens ORDER BY created_at ASC').all();
+    const rows = db.prepare('SELECT * FROM tokens ORDER BY created_at ASC').all() as any[];
     const map: Record<string, any[]> = {};
     for (const r of rows) {
       if (!map[r.device_id]) map[r.device_id] = [];
