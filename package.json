@@ -1,0 +1,29 @@
+{
+  "name": "@aries/mobile-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "local-start": "node -r ts-node/register src/server.ts",
+    "local-test": "node -r ts-node/register tests/run_tests.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "uuid": "^11.1.0",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.13.0",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

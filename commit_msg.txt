@@ -1,0 +1,18 @@
+﻿Add persistent conversations, pairing, and realtime sync
+
+Why:
+- Implement Milestone 1: persistent conversations (create, append-only messages, reload after restart) and enable LAN mobile pairing and realtime sync.
+
+What:
+- File-based storage adapter (.data) with Storage API.
+- Conversation and Message models and repository (src/data/conversation.ts).
+- Device pairing and repo (src/data/device.ts) and DeviceService.
+- ConversationService for business logic and server HTTP endpoints (src/server.ts).
+- WebSocket /v1/realtime for mobile subscriptions and Events emitter.
+- Integration test that verifies HTTP post -> WS broadcast (tests/run_tests.ts).
+- Docs for pairing and migration placeholder.
+
+Notes:
+- Uses file-based storage for Milestone 1; plan to migrate to SQL later via migrations/001_init.sql.
+
+Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>

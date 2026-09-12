@@ -1,0 +1,13 @@
+{
+  "cwd": "C:\\Users\\Gakumu\\.copilot\\repos\\copilot-worktrees\\mobile\\aresjxaime-bookish-giggle",
+  "branch": "aresjxaime-bookish-giggle",
+  "latest_commit": "d008671",
+  "files": [
+    "src/data/storage.ts",
+    "src/data/conversation.ts",
+    "src/data/device.ts",
+    "src/events.ts",
+    "src/server.ts",
+    "tests/run_tests.ts"
+  ]
+}

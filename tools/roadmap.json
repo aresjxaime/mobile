@@ -1,0 +1,9 @@
+{
+  "project": "Project Aries",
+  "milestone_1": {
+    "name": "Persistent Conversations",
+    "status": "in_progress",
+    "next": ["sql-adapter","tests","ci"]
+  },
+  "backlog": ["security","expo-example","migration-tool","authorization"]
+}

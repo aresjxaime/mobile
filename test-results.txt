@@ -1,0 +1,31 @@
+
+> @aries/mobile-server@0.1.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mC:/Users/Gakumu/.copilot/repos/copilot-worktrees/mobile/aresjxaime-bookish-giggle[39m
+
+ [32m✓[39m tests/unit.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 447[2mms[22m[39m
+adapter file ok
+Starting tests...
+Conversation 4b9e922c-a0ec-4e3f-9c04-5ff7012ef5ca Device token 80e790b0-46ee-4357-b2b0-ae4c9f606be4
+adapter sql ok
+ [32m✓[39m tests/adapter.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 1369[2mms[22m[39m
+   [33m[2m✓[22m[39m storage adapters[2m > [22mfile adapter should pass [33m 717[2mms[22m[39m
+   [33m[2m✓[22m[39m storage adapters[2m > [22msql adapter should pass [33m 649[2mms[22m[39m
+[server] Aries local server listening on http://localhost:3000
+WS connected
+Subscribed ack 4b9e922c-a0ec-4e3f-9c04-5ff7012ef5ca
+[server-err] (node:7192) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Received message via WS hello from phone
+Posted message, server responded fa53667f-b254-4c62-914e-27fd773a1e9b
+Tests passed
+ [32m✓[39m tests/services.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 2391[2mms[22m[39m
+   [33m[2m✓[22m[39m integration[2m > [22mlocal integration test passes [33m 2388[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 20:14:29
+[2m   Duration [22m 2.99s[2m (transform 218ms, setup 0ms, collect 382ms, tests 4.21s, environment 1ms, prepare 531ms)[22m
+
