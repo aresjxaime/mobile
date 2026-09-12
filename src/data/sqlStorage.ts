@@ -72,6 +72,80 @@ function open() {
   } catch (e) {
     // ignore migration errors
   }
+
+  // ARES LEX: Initialize legal document schema
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS legal_documents (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        document_type TEXT NOT NULL,
+        first_published TEXT,
+        latest_version_id TEXT,
+        source_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_legal_documents_source_id ON legal_documents(source_id);
+      CREATE INDEX IF NOT EXISTS idx_legal_documents_user_id ON legal_documents(user_id);
+
+      CREATE TABLE IF NOT EXISTS legal_document_versions (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        version_number INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        published_date TEXT,
+        ingested_at TEXT NOT NULL,
+        created_by TEXT,
+        UNIQUE(document_id, version_number),
+        FOREIGN KEY(document_id) REFERENCES legal_documents(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS cases (
+        id TEXT PRIMARY KEY,
+        case_name TEXT NOT NULL,
+        citation TEXT UNIQUE NOT NULL,
+        year INTEGER,
+        court TEXT,
+        document_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(document_id) REFERENCES legal_documents(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_cases_user_id ON cases(user_id);
+      CREATE INDEX IF NOT EXISTS idx_cases_year ON cases(year);
+
+      CREATE TABLE IF NOT EXISTS legal_citations (
+        id TEXT PRIMARY KEY,
+        source_document_id TEXT NOT NULL,
+        target_document_id TEXT,
+        target_citation TEXT NOT NULL,
+        context TEXT,
+        verified INTEGER DEFAULT 0,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(source_document_id) REFERENCES legal_documents(id),
+        FOREIGN KEY(target_document_id) REFERENCES legal_documents(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_legal_citations_user_id ON legal_citations(user_id);
+
+      CREATE TABLE IF NOT EXISTS legal_sources (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        adapter_type TEXT NOT NULL,
+        metadata TEXT,
+        ingestion_status TEXT DEFAULT 'idle',
+        last_synced TEXT,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_legal_sources_user_id ON legal_sources(user_id);
+    `);
+  } catch (e) {
+    // ignore if tables already exist
+  }
   
   return db;
 }
